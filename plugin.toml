@@ -1,0 +1,3 @@
+name = "loki-logger"
+version = "0.1.0"
+description = "Send Dokku app logs to Loki."

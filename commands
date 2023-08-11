@@ -1,0 +1,52 @@
+#!/bin/bash
+
+set -e
+
+# Get the URL of the Loki instance. This can be extended to pull from Dokku's config or environment variables.
+LOKI_URL=${LOKI_URL:-"http://localhost:81/loki/api/v1/push"}
+
+configure_container_for_loki() {
+  local container_id="$1"
+  
+  if [ -z "$container_id" ]; then
+    echo "Error: Container ID not provided."
+    return 1
+  fi
+  
+  echo "Configuring container $container_id to send logs to Loki..."
+  
+  # Configure the container to use the Loki logging driver.
+  docker container update --log-driver=loki --log-opt loki-url="$LOKI_URL" "$container_id"
+}
+
+case "$1" in
+  loki:install)
+    # Install the loki-docker-driver if not installed.
+    if ! docker plugin ls | grep loki; then
+      docker plugin install grafana/loki-docker-driver:latest --alias loki
+    fi
+    ;;
+
+  loki:link)
+    APP="$2"
+    if [ -z "$APP" ]; then
+      echo "Error: App name must be provided."
+      exit 1
+    fi
+
+    # Get all app's container IDs
+    CONTAINER_IDS=$(dokku ps:report "$APP" | grep 'Container Id' | cut -f2)
+    if [ -z "$CONTAINER_IDS" ]; then
+      echo "Error: No containers found for app $APP."
+      exit 1
+    fi
+
+    for container_id in $CONTAINER_IDS; do
+      configure_container_for_loki "$container_id"
+    done
+    ;;
+
+  *)
+    # If no commands match, do nothing.
+    ;;
+esac
