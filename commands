@@ -35,7 +35,7 @@ case "$1" in
     fi
 
     # Get all app's container IDs
-    CONTAINER_IDS=$(dokku ps:report "$APP" | grep 'Container Id' | cut -f2)
+    CONTAINER_IDS=$(dokku ps:report "$APP" | grep -oP 'CID: \K\w+')
     if [ -z "$CONTAINER_IDS" ]; then
       echo "Error: No containers found for app $APP."
       exit 1
