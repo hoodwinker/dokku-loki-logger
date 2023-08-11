@@ -2,22 +2,8 @@
 
 set -e
 
-# Get the URL of the Loki instance. This can be extended to pull from Dokku's config or environment variables.
+# Get the URL of the Loki instance.
 LOKI_URL=${LOKI_URL:-"http://localhost:81/loki/api/v1/push"}
-
-configure_container_for_loki() {
-  local container_id="$1"
-  
-  if [ -z "$container_id" ]; then
-    echo "Error: Container ID not provided."
-    return 1
-  fi
-  
-  echo "Configuring container $container_id to send logs to Loki..."
-  
-  # Configure the container to use the Loki logging driver.
-  docker container update --log-driver=loki --log-opt loki-url="$LOKI_URL" "$container_id"
-}
 
 case "$1" in
   loki:install)
@@ -34,16 +20,11 @@ case "$1" in
       exit 1
     fi
 
-    # Get all app's container IDs
-    CONTAINER_IDS=$(dokku ps:report "$APP" | grep -oP 'CID: \K\w+')
-    if [ -z "$CONTAINER_IDS" ]; then
-      echo "Error: No containers found for app $APP."
-      exit 1
-    fi
+    # Set Docker options for the app to use the Loki logging driver.
+    dokku docker-options:add "$APP" run "--log-driver=loki --log-opt loki-url=$LOKI_URL"
 
-    for container_id in $CONTAINER_IDS; do
-      configure_container_for_loki "$container_id"
-    done
+    echo "Docker options for app $APP updated to use Loki. Please redeploy your app for changes to take effect."
+
     ;;
 
   *)
